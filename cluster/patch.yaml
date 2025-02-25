@@ -1,0 +1,36 @@
+machine:
+  kubelet:
+    nodeIP:
+      validSubnets:
+      - 192.168.1.0/24
+    extraConfig:
+      maxPods: 512
+  kernel:
+    modules:
+    - name: openvswitch
+    - name: drbd
+      parameters:
+        - usermode_helper=disabled
+    - name: zfs
+    - name: spl
+  install:
+    image: ghcr.io/aenix-io/cozystack/talos:v1.8.3
+  files:
+  - content: |
+      [plugins]
+        [plugins."io.containerd.grpc.v1.cri"]
+          device_ownership_from_security_context = true
+        [plugins."io.containerd.cri.v1.runtime"]
+          device_ownership_from_security_context = true      
+    path: /etc/cri/conf.d/20-customization.part
+    op: create
+
+cluster:
+  network:
+    cni:
+      name: none
+    dnsDomain: cozy.local
+    podSubnets:
+    - 10.244.0.0/16
+    serviceSubnets:
+    - 10.96.0.0/16

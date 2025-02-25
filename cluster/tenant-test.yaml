@@ -1,0 +1,11 @@
+apiVersion: apps.cozystack.io/v1alpha1
+kind: Tenant
+metadata:
+  name: tenant-cha
+  namespace: cozy-system
+spec:
+  ingress: true
+  monitoring: true
+  etcd: true
+  isolated: true
+

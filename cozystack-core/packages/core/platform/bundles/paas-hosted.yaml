@@ -1,0 +1,249 @@
+{{- $cozyConfig := lookup "v1" "ConfigMap" "cozy-system" "cozystack" }}
+{{- $oidcEnabled := index $cozyConfig.data "oidc-enabled" }}
+{{- $host := index $cozyConfig.data "root-host" }}
+{{- if not $host }}
+{{- fail "ERROR need root-host in cozystack ConfigMap" }}
+{{- end }}
+{{- $apiServerEndpoint := index $cozyConfig.data "api-server-endpoint" }}
+{{- if not $apiServerEndpoint }}
+{{- fail "ERROR need api-server-endpoint in cozystack ConfigMap" }}
+{{- end }}
+
+releases:
+- name: fluxcd-operator
+  releaseName: fluxcd-operator
+  chart: cozy-fluxcd-operator
+  namespace: cozy-fluxcd
+  privileged: true
+  dependsOn: []
+
+- name: fluxcd
+  releaseName: fluxcd
+  chart: cozy-fluxcd
+  namespace: cozy-fluxcd
+  dependsOn: [fluxcd-operator]
+
+- name: cert-manager-crds
+  releaseName: cert-manager-crds
+  chart: cozy-cert-manager-crds
+  namespace: cozy-cert-manager
+  dependsOn: []
+
+- name: cozystack-api
+  releaseName: cozystack-api
+  chart: cozy-cozystack-api
+  namespace: cozy-system
+  dependsOn: []
+
+- name: cozystack-controller
+  releaseName: cozystack-controller
+  chart: cozy-cozystack-controller
+  namespace: cozy-system
+  dependsOn: []
+  {{- if eq (index $cozyConfig.data "telemetry-enabled") "false" }}
+  values:
+    cozystackController:
+      disableTelemetry: true
+  {{- end }}
+
+- name: cert-manager
+  releaseName: cert-manager
+  chart: cozy-cert-manager
+  namespace: cozy-cert-manager
+  dependsOn: [cert-manager-crds]
+
+- name: cert-manager-issuers
+  releaseName: cert-manager-issuers
+  chart: cozy-cert-manager-issuers
+  namespace: cozy-cert-manager
+  dependsOn: [cert-manager]
+
+- name: victoria-metrics-operator
+  releaseName: victoria-metrics-operator
+  chart: cozy-victoria-metrics-operator
+  namespace: cozy-victoria-metrics-operator
+  dependsOn: [cert-manager]
+
+- name: monitoring-agents
+  releaseName: monitoring-agents
+  chart: cozy-monitoring-agents
+  namespace: cozy-monitoring
+  privileged: true
+  dependsOn: [victoria-metrics-operator]
+  values:
+    scrapeRules:
+      etcd:
+        enabled: true
+
+- name: etcd-operator
+  releaseName: etcd-operator
+  chart: cozy-etcd-operator
+  namespace: cozy-etcd-operator
+  dependsOn: [cert-manager]
+
+- name: grafana-operator
+  releaseName: grafana-operator
+  chart: cozy-grafana-operator
+  namespace: cozy-grafana-operator
+  dependsOn: []
+
+- name: mariadb-operator
+  releaseName: mariadb-operator
+  chart: cozy-mariadb-operator
+  namespace: cozy-mariadb-operator
+  dependsOn: [cert-manager,victoria-metrics-operator]
+
+- name: postgres-operator
+  releaseName: postgres-operator
+  chart: cozy-postgres-operator
+  namespace: cozy-postgres-operator
+  dependsOn: [cert-manager,victoria-metrics-operator]
+
+- name: kafka-operator
+  releaseName: kafka-operator
+  chart: cozy-kafka-operator
+  namespace: cozy-kafka-operator
+  dependsOn: []
+
+- name: clickhouse-operator
+  releaseName: clickhouse-operator
+  chart: cozy-clickhouse-operator
+  namespace: cozy-clickhouse-operator
+  dependsOn: []
+
+- name: rabbitmq-operator
+  releaseName: rabbitmq-operator
+  chart: cozy-rabbitmq-operator
+  namespace: cozy-rabbitmq-operator
+  dependsOn: []
+
+- name: redis-operator
+  releaseName: redis-operator
+  chart: cozy-redis-operator
+  namespace: cozy-redis-operator
+  dependsOn: []
+
+- name: piraeus-operator
+  releaseName: piraeus-operator
+  chart: cozy-piraeus-operator
+  namespace: cozy-linstor
+  dependsOn: [cert-manager]
+
+- name: telepresence
+  releaseName: traffic-manager
+  chart: cozy-telepresence
+  namespace: cozy-telepresence
+  optional: true
+  dependsOn: []
+
+- name: external-dns
+  releaseName: external-dns
+  chart: cozy-external-dns
+  namespace: cozy-external-dns
+  optional: true
+  dependsOn: [cilium,kubeovn]
+
+- name: external-secrets-operator
+  releaseName: external-secrets-operator
+  chart: cozy-external-secrets-operator
+  namespace: cozy-external-secrets-operator
+  optional: true
+  dependsOn: []
+
+- name: dashboard
+  releaseName: dashboard
+  chart: cozy-dashboard
+  namespace: cozy-dashboard
+  values:
+    kubeapps:
+    {{- if .Capabilities.APIVersions.Has "source.toolkit.fluxcd.io/v1" }}
+    {{- with (lookup "source.toolkit.fluxcd.io/v1" "HelmRepository" "cozy-public" "").items }}
+      redis:
+        master:
+          podAnnotations:
+            {{- range $index, $repo := . }}
+            {{- with (($repo.status).artifact).revision }}
+            repository.cozystack.io/{{ $repo.metadata.name }}: {{ quote . }}
+            {{- end }}
+            {{- end }}
+    {{- end }}
+    {{- end }}
+      dashboard:
+        {{- $cozystackBranding:= lookup "v1" "ConfigMap" "cozy-system" "cozystack-branding" }}
+        {{- $branding := dig "data" "branding" "" $cozystackBranding }}
+        {{- if $branding }}
+        customLocale:
+          "Kubeapps": {{ $branding }}
+        {{- end }}
+        customStyle: |
+          {{- $logoImage := dig "data" "logo" "" $cozystackBranding }}
+          {{- if $logoImage }}
+          .kubeapps-logo {
+            background-image: {{ $logoImage }}
+          }
+          {{- end }}
+          #serviceaccount-selector {
+            display: none;
+          }
+          .login-moreinfo {
+            display: none;
+          }
+          a[href="#/docs"] {
+            display: none;
+          }
+          .login-group .clr-form-control .clr-control-label {
+            display: none;
+          }
+          .appview-separator div.appview-first-row div.center {
+            display: none;
+          }
+          .appview-separator div.appview-first-row section[aria-labelledby="app-secrets"] {
+            display: none;
+          }
+          .appview-first-row section[aria-labelledby="access-urls-title"] {
+            width: 100%;
+          }
+  {{- $dashboardKCconfig := lookup "v1" "ConfigMap" "cozy-dashboard" "kubeapps-auth-config" }}
+  {{- $dashboardKCValues := dig "data" "values.yaml" "" $dashboardKCconfig }}
+  {{- if $dashboardKCValues }}
+  valuesFrom:
+  - kind: ConfigMap
+    name: kubeapps-auth-config
+    valuesKey: values.yaml
+  {{- end }}
+
+  {{- if eq $oidcEnabled "true" }}
+  dependsOn: [keycloak-configure]
+  {{- else }}
+  dependsOn: []
+  {{- end }}
+
+{{- if $oidcEnabled }}
+- name: keycloak
+  releaseName: keycloak
+  chart: cozy-keycloak
+  namespace: cozy-keycloak
+  dependsOn: [postgres-operator]
+
+- name: keycloak-operator
+  releaseName: keycloak-operator
+  chart: cozy-keycloak-operator
+  namespace: cozy-keycloak
+  dependsOn: [keycloak]
+
+- name: keycloak-configure
+  releaseName: keycloak-configure
+  chart: cozy-keycloak-configure
+  namespace: cozy-keycloak
+  dependsOn: [keycloak-operator]
+  values:
+    cozystack:
+      configHash: {{ $cozyConfig | toJson | sha256sum }}
+{{- end }}
+
+- name: goldpinger
+  releaseName: goldpinger
+  chart: cozy-goldpinger
+  namespace: cozy-goldpinger
+  privileged: true
+  dependsOn: [monitoring-agents]

@@ -1,0 +1,45 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  instances: {{ .Values.replicas }}
+  enableSuperuserAccess: true
+
+  postgresql:
+    parameters:
+      max_wal_senders: "30"
+      {{- with .Values.postgresql.parameters.max_connections }}
+      max_connections: "{{ . }}"
+      {{- end }}
+
+  minSyncReplicas: {{ .Values.quorum.minSyncReplicas }}
+  maxSyncReplicas: {{ .Values.quorum.maxSyncReplicas }}
+
+  monitoring:
+    enablePodMonitor: true
+
+  storage:
+    size: {{ required ".Values.size is required" .Values.size }}
+    {{- with .Values.storageClass }}
+    storageClass: {{ . }}
+    {{- end }}
+
+  inheritedMetadata:
+    labels:
+      policy.cozystack.io/allow-to-apiserver: "true"
+---
+apiVersion: cozystack.io/v1alpha1
+kind: WorkloadMonitor
+metadata:
+  name: {{ $.Release.Name }}
+spec:
+  replicas: {{ .Values.replicas }}
+  minReplicas: 1
+  kind: postgres
+  type: postgres
+  selector:
+    cnpg.io/cluster: {{ .Release.Name }}
+    cnpg.io/podRole: instance
+  version: {{ $.Chart.Version }}

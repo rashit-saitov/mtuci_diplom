@@ -1,0 +1,97 @@
+{
+    "title": "Chart Values",
+    "type": "object",
+    "properties": {
+        "host": {
+            "type": "string",
+            "description": "The hostname used to access the Kubernetes cluster externally (defaults to using the cluster name as a subdomain for the tenant host).",
+            "default": ""
+        },
+        "controlPlane": {
+            "type": "object",
+            "properties": {
+                "replicas": {
+                    "type": "number",
+                    "description": "Number of replicas for Kubernetes contorl-plane components",
+                    "default": 2
+                }
+            }
+        },
+        "storageClass": {
+            "type": "string",
+            "description": "StorageClass used to store user data",
+            "default": "replicated"
+        },
+        "addons": {
+            "type": "object",
+            "properties": {
+                "certManager": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "description": "Enables the cert-manager",
+                            "default": false
+                        },
+                        "valuesOverride": {
+                            "type": "object",
+                            "description": "Custom values to override",
+                            "default": {}
+                        }
+                    }
+                },
+                "ingressNginx": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "description": "Enable Ingress-NGINX controller (expect nodes with 'ingress-nginx' role)",
+                            "default": false
+                        },
+                        "valuesOverride": {
+                            "type": "object",
+                            "description": "Custom values to override",
+                            "default": {}
+                        },
+                        "hosts": {
+                            "type": "array",
+                            "description": "List of domain names that should be passed through to the cluster by upper cluster",
+                            "default": [],
+                            "items": {}
+                        }
+                    }
+                },
+                "fluxcd": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "description": "Enables Flux CD",
+                            "default": false
+                        },
+                        "valuesOverride": {
+                            "type": "object",
+                            "description": "Custom values to override",
+                            "default": {}
+                        }
+                    }
+                },
+                "monitoringAgents": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "description": "Enables MonitoringAgents (fluentbit, vmagents for sending logs and metrics to storage) if tenant monitoring enabled, send to tenant storage, else to root storage",
+                            "default": false
+                        },
+                        "valuesOverride": {
+                            "type": "object",
+                            "description": "Custom values to override",
+                            "default": {}
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

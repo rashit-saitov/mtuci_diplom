@@ -1,0 +1,18 @@
+cilium:
+  kubeProxyReplacement: true
+  hubble:
+    enabled: false
+  externalIPs:
+    enabled: true
+  nodePort:
+    enabled: true
+  loadBalancer:
+    algorithm: maglev
+  ipam:
+    mode: "kubernetes"
+  image:
+    repository: ghcr.io/aenix-io/cozystack/cilium
+    tag: 1.16.6
+    digest: "sha256:cf64df62897b071d5a9a005564ecbfb9124aa82a96957e329ce28a187864f113"
+  envoy:
+    enabled: false

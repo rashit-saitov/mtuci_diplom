@@ -1,0 +1,25 @@
+kube-ovn:
+  namespace: cozy-kubeovn
+  func:
+    ENABLE_NP: false
+  ipv4:
+    POD_CIDR: "10.244.0.0/16"
+    POD_GATEWAY: "10.244.0.1"
+    SVC_CIDR: "10.96.0.0/16"
+    JOIN_CIDR: "100.64.0.0/16"
+  MASTER_NODES_LABEL: "node-role.kubernetes.io/control-plane"
+  networking:
+    ENABLE_SSL: true
+  cni_conf:
+    CNI_CONFIG_PRIORITY: "10"
+    MOUNT_LOCAL_BIN_DIR: false
+  OPENVSWITCH_DIR: "/var/lib/openvswitch"
+  OVN_DIR: "/var/lib/ovn"
+  DISABLE_MODULES_MANAGEMENT: true
+global:
+  registry:
+    address: ghcr.io/aenix-io/cozystack
+  images:
+    kubeovn:
+      repository: kubeovn
+      tag: v1.13.2@sha256:6c55f8cdd696ca6799f373fc6824f2faa11f7a3185a9f29d7bbd08ff09b6b3e3

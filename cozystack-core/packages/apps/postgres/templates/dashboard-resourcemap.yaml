@@ -1,0 +1,28 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Release.Name }}-dashboard-resources
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - services
+  resourceNames:
+  - {{ .Release.Name }}-r
+  - {{ .Release.Name }}-ro
+  - {{ .Release.Name }}-rw
+  verbs: ["get", "list", "watch"]
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  resourceNames:
+  - {{ .Release.Name }}-credentials
+  verbs: ["get", "list", "watch"]
+- apiGroups:
+  - cozystack.io
+  resources:
+  - workloadmonitors
+  resourceNames:
+  - {{ .Release.Name }}
+  verbs: ["get", "list", "watch"]
